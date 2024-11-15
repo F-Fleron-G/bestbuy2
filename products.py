@@ -101,10 +101,12 @@ class NonStockedProduct(Product):
         super().__init__(name, price, quantity=0)
 
     def set_quantity(self, quantity: int):
-        raise ValueError(f"{RED}Quantity modification is not allowed for non-stocked products.{RESET}")
+        raise ValueError(f"{RED}Quantity modification is not allowed"
+                         f" for non-stocked products.{RESET}")
 
     def show(self) -> str:
-        return f"{YELLOW}{self.name}{RESET}: Price: {CYAN}{self.price}{RESET}, Quantity: Always 0 (Non-stocked)"
+        return (f"{YELLOW}{self.name}{RESET}: Price: {CYAN}{self.price}{RESET},"
+                f" Quantity: Always 0 (Non-stocked)")
 
 
 class LimitedProduct(Product):
@@ -114,9 +116,11 @@ class LimitedProduct(Product):
 
     def buy(self, quantity: int) -> float:
         if quantity > self.maximum:
-            raise ValueError(f"{RED}ERROR! Cannot purchase more than {self.maximum} units of {self.name} at once.{RESET}")
+            raise ValueError(f"{RED}ERROR! Cannot purchase more than {self.maximum}"
+                             f" units of {self.name} at once.{RESET}")
         return super().buy(quantity)
 
     def show(self) -> str:
         return (f"{YELLOW}{self.name}{RESET}: Price: {CYAN}{self.price}{RESET},"
-                f" Quantity: {CYAN}{self.quantity}{RESET}, Max per Order: {CYAN}{self.maximum}{RESET}")
+                f" Quantity: {CYAN}{self.quantity}{RESET}, Max per Order:"
+                f" {CYAN}{self.maximum}{RESET}")

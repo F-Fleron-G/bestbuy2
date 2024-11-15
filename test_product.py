@@ -47,7 +47,7 @@ def test_product_purchase_larger_quantity_than_exists():
     with pytest.raises(ValueError):
         product.buy(10)
 
-# _______
+
 product_list = [
     products.Product("MacBook Air M2", price=1450, quantity=100),
     products.Product("Bose QuietComfort Earbuds", price=250, quantity=500),

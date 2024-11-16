@@ -33,6 +33,7 @@ class Product:
         self.price = price
         self.quantity = quantity
         self.active = True
+        self.promotion = None
 
     def get_quantity(self) -> float:
         """Returns the number of items in stock."""
@@ -66,21 +67,41 @@ class Product:
         """Marks the product as inactive (out of stock or discontinued)."""
         self.active = False
 
+    def set_promotion(self, promotion):
+        """
+        Assigns a promotion to the product.
+
+        Args:
+            promotion (Promotion): The promotion to assign.
+        """
+        self.promotion = promotion
+
+    def get_promotion(self):
+        """
+        Returns the current promotion assigned to the product.
+
+        Returns:
+            Promotion: The assigned promotion, or None if none is assigned.
+        """
+        return self.promotion
+
     def show(self) -> str:
-        """Returns a formatted string describing the product's details."""
-        return (f"{YELLOW}{self.name}{RESET}: Price: {CYAN}{self.price}{RESET},"
-                f" Quantity: {CYAN}{self.quantity}{RESET}")
+        """
+        Returns a formatted string describing the product's details,
+        including promotion information.
+        """
+        promo_text = f", Promotion: {self.promotion.name}" if self.promotion else ", Promotion: None"
+        return f"{self.name}, Price: ${self.price}, Quantity: {self.quantity}{promo_text}"
 
     def buy(self, quantity: int) -> float:
         """
-        Processes a purchase of a specific quantity.
+        Processes a purchase of a specific quantity, applying promotions if available.
 
         Args:
-            quantity (int): The number of items to buy (must be positive
-            and within stock).
+            quantity (int): The number of items to buy (must be positive and within stock).
 
         Returns:
-            float: The total cost of the purchase.
+            float: The total cost of the purchase, with promotions applied if available.
 
         Raises:
             ValueError: If the quantity is invalid (negative, zero, or more than the
@@ -91,7 +112,9 @@ class Product:
         if quantity > self.quantity:
             raise ValueError(f"{RED}ERROR! Insufficient stock.{RESET}")
 
-        total_price = self.price * quantity
+        total_price = (
+            self.promotion.apply_promotion(self, quantity) if self.promotion else self.price * quantity
+        )
         self.set_quantity(self.quantity - quantity)
         return total_price
 
@@ -105,8 +128,25 @@ class NonStockedProduct(Product):
                          f" for non-stocked products.{RESET}")
 
     def show(self) -> str:
-        return (f"{YELLOW}{self.name}{RESET}: Price: {CYAN}{self.price}{RESET},"
-                f" Quantity: Always 0 (Non-stocked)")
+        promo_text = f", Promotion: {self.promotion.name}" if self.promotion else ", Promotion: None"
+        return f"{self.name}, Price: ${self.price}, Quantity: Unlimited{promo_text}"
+
+    def buy(self, quantity: int) -> float:
+        """
+        Processes a purchase for non-stocked products, applying promotions if available.
+
+        Args:
+            quantity (int): The number of items to buy.
+
+        Returns:
+            float: The total cost of the purchase.
+        """
+        if quantity <= 0:
+            raise ValueError(f"{RED}ERROR! Invalid quantity.{RESET}")
+
+        if self.promotion:
+            return self.promotion.apply_promotion(self, quantity)
+        return self.price * quantity
 
 
 class LimitedProduct(Product):
@@ -121,6 +161,9 @@ class LimitedProduct(Product):
         return super().buy(quantity)
 
     def show(self) -> str:
-        return (f"{YELLOW}{self.name}{RESET}: Price: {CYAN}{self.price}{RESET},"
-                f" Quantity: {CYAN}{self.quantity}{RESET}, Max per Order:"
-                f" {CYAN}{self.maximum}{RESET}")
+        """
+        Returns a formatted string describing the limited product,
+        including promotion information and maximum limit per order.
+        """
+        promo_text = f", Promotion: {self.promotion.name}" if self.promotion else ", Promotion: None"
+        return f"{self.name}, Price: ${self.price}, Limited to {self.maximum} per order!{promo_text}"

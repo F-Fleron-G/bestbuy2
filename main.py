@@ -1,4 +1,5 @@
-from products import Product
+from products import Product, NonStockedProduct, LimitedProduct
+from promotions import SecondHalfPrice, ThirdOneFree, PercentDiscount
 import store
 
 RED = "\033[91m"
@@ -21,7 +22,17 @@ def list_products(store):
         print(f"{YELLOW}WE ARE OUT OF STOCK!{RESET}")
     else:
         for p_num, product in enumerate(products, start=1):
-            print(f"{p_num}. {product.show()}")
+            promotion_text = (
+                f"{PURPLE}{product.promotion}{RESET}"
+                if product.promotion
+                else f"{RED}None{RESET}"
+            )
+            print(
+                f"{YELLOW}{p_num}.{RESET} {YELLOW}{product.name}{RESET}, "
+                f"Price: {CYAN}${product.price:.2f}{RESET}, "
+                f"Quantity: {CYAN}{product.quantity if hasattr(product, 'quantity') else 'N/A'}{RESET}, "
+                f"Promotion: {promotion_text}"
+            )
     print()
 
 
@@ -39,14 +50,8 @@ def make_order(store):
     Allows the user to place an order by selecting products by number and
     specifying quantities.
 
-    This function shows the list of products once at the start, lets the
-    user select products by their list number, and enter the desired quantity.
-
-    Products can be selected multiple times, and their quantities will be
-    aggregated in the final order.
-
-    After each successful addition to the order,it confirms and prompts the
-    user to continue or finish the order.
+    Displays products with promotions, handles invalid transactions gracefully,
+    and provides a detailed order summary.
     """
     list_products(store)
     p_order_title = "PLACE YOUR ORDER"
@@ -73,47 +78,45 @@ def make_order(store):
             print(f"{RED}INVALID INPUT! Please enter a number.{RESET}")
             continue
 
-        quantity = input(f"{GREEN}How many {RESET}"
-                         f"'{product.name}' {GREEN}would you like?{RESET} ")
+        quantity = input(f"{GREEN}How many {RESET}'{product.name}'"
+                         f" {GREEN}would you like?{RESET} ")
 
         try:
             quantity = int(quantity)
             if quantity <= 0:
                 print(f"{RED}ATTENTION! Quantity must be a positive number.{RESET}")
                 continue
-            if product.name in shopping_list:
-                shopping_list[product.name]['quantity'] += quantity
-            else:
-                shopping_list[product.name] = {'product': product, 'quantity': quantity}
 
-            print(f"{CYAN}Added {quantity} x {product.name} to your order.{RESET}\n"
-                  f"Continue ordering or type '{YELLOW}done{RESET}' to finish your order.")
+            try:
+                total_cost = product.buy(quantity)
+                if product.name in shopping_list:
+                    shopping_list[product.name]['quantity'] += quantity
+                    shopping_list[product.name]['total_cost'] += total_cost
+                else:
+                    shopping_list[product.name] = {'quantity': quantity, 'total_cost': total_cost}
+                print(f"{CYAN}Added {quantity} x {product.name} to your order.{RESET}\n"
+                      f"Continue ordering or type '{YELLOW}done{RESET}' to finish your order.")
+            except ValueError as e:
+                print(f"{RED}{e}{RESET}")
+
         except ValueError:
             print(f"{RED}INVALID INPUT! Please enter a valid number.{RESET}")
             continue
 
     if shopping_list:
-        try:
-            order_list = [(item['product'], item['quantity']) for item
-                          in shopping_list.values()]
-            total_price = store.order(order_list)
-            total_order_title = "YOUR ORDER SUMMARY"
-            print(f"\n{total_order_title}")
-            print(f"{CYAN}‾{RESET}" * len(total_order_title))
+        total_order_title = "YOUR ORDER SUMMARY"
+        print(f"\n{total_order_title}")
+        print(f"{CYAN}‾{RESET}" * len(total_order_title))
 
-            for item in shopping_list.values():
-                product = item['product']
-                quantity = item['quantity']
-                item_total = quantity * product.price
-                print(f"{YELLOW}{product.name}{RESET} x {CYAN}{quantity}{RESET} @"
-                      f" {CYAN}{product.price}{RESET} each\n"
-                      f"Item Total: {CYAN}{item_total}{RESET}")
-                print()
+        total_price = 0
+        for name, details in shopping_list.items():
+            print(f"{YELLOW}{name}{RESET}: {CYAN}{details['quantity']}"
+                  f" items{RESET}, Total: {CYAN}${details['total_cost']:.2f}{RESET}")
+            total_price += details['total_cost']
 
-            print(f"Order Total: {CYAN}{total_price}{RESET}")
-
-        except ValueError as e:
-            print(e)
+        print(f"\nOrder Total: {CYAN}${total_price:.2f}{RESET}")
+    else:
+        print(f"{YELLOW}No items were added to your order.{RESET}")
 
 
 def start(store):
@@ -126,11 +129,8 @@ def start(store):
     This function shows a simple menu where the user can:
         1. View all the products in the store.
         2. See the total quantity of products available.
-        3. Place an order (a placeholder for now).
+        3. Place an order.
         4. Quit the app.
-
-    It keeps asking the user for input until they choose to quit or make a
-    valid choice.
     """
     while True:
         menu_title = "STORE MENU"
@@ -162,18 +162,26 @@ def main():
     Sets up the store with some products and kicks off the user interface.
 
     This creates a list of products like the MacBook Air, Bose earbuds, and the
-    Google Pixel.
+    Google Pixel, along with promotions.
 
     It then creates a store object with those products and hands it over to the
     `start()` function to run the menu.
-
-    It's basically the entry point of the program where everything starts.
     """
+    second_half_price = SecondHalfPrice("Second Half price!")
+    third_one_free = ThirdOneFree("Third One Free!")
+    thirty_percent = PercentDiscount("30% off!", percent=30)
+
     product_list = [
         Product("MacBook Air M2", price=1450, quantity=100),
         Product("Bose QuietComfort Earbuds", price=250, quantity=500),
-        Product("Google Pixel 7", price=500, quantity=250)
+        Product("Google Pixel 7", price=500, quantity=250),
+        NonStockedProduct("Windows License", price=125),
+        LimitedProduct("Shipping", price=10, quantity=250, maximum=1)
     ]
+
+    product_list[0].set_promotion(second_half_price)
+    product_list[1].set_promotion(third_one_free)
+    product_list[3].set_promotion(thirty_percent)
 
     best_buy = store.Store(product_list)
 
